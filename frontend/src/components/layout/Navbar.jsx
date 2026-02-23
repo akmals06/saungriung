@@ -15,32 +15,33 @@ const Navbar = () => {
     const scrollToSection = (id) => {
         const element = document.getElementById(id);
         if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-            setIsOpen(false); // Tutup menu mobile jika terbuka
+            window.scrollTo({
+                top: element.offsetTop - 100,
+                behavior: "smooth"
+            });
+            setIsOpen(false);
         }
     };
 
     return (
         <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
-            <div className="nav-container">
-                <div className="logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                    <span>Saung</span>Riung
-                </div>
-                
-                <div className={`hamburger ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-                    <span className="bar"></span>
-                    <span className="bar"></span>
-                    <span className="bar"></span>
-                </div>
+            <div className="logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                <span>Saung</span>Riung
+            </div>
+            
+            <div className="nav-links">
+                <span className="nav-link" onClick={() => scrollToSection('home')}>Beranda</span>
+                <span className="nav-link" onClick={() => scrollToSection('about')}>Tentang</span>
+                <span className="nav-link" onClick={() => scrollToSection('events')}>Agenda</span>
+            </div>
 
-                <ul className={`nav-links ${isOpen ? 'active' : ''}`}>
-                    <li><button onClick={() => scrollToSection('home')} className="nav-btn">Beranda</button></li>
-                    <li><button onClick={() => scrollToSection('about')} className="nav-btn">Tentang</button></li>
-                    <li><button onClick={() => scrollToSection('gallery')} className="nav-btn">Galeri</button></li>
-                    <li><button onClick={() => scrollToSection('events')} className="nav-btn">Kegiatan</button></li>
-                    <li><button onClick={() => scrollToSection('structure')} className="nav-btn">Tim</button></li>
-                    <li><button onClick={() => scrollToSection('contact')} className="btn-nav contact-btn">Hubungi Kami</button></li>
-                </ul>
+            <button onClick={() => scrollToSection('contact')} className="btn btn-primary" style={{padding: '0.6rem 1.5rem', fontSize: '0.9rem'}}>
+                Hubungi Kami
+            </button>
+
+            {/* Mobile Hamburger Logic (Hidden on Desktop via CSS) */}
+            <div className="hamburger-trigger" onClick={() => setIsOpen(!isOpen)} style={{display: 'none'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </div>
         </nav>
     );
