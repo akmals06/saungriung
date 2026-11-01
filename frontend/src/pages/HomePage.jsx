@@ -6,7 +6,6 @@ import SupportingTriGrid from '../components/home/SupportingTriGrid';
 import AmbientAudioBar from '../components/home/AmbientAudioBar';
 import EventCard from '../components/EventCard';
 import Footer from '../components/layout/Footer';
-import Toast from '../components/ui/Toast';
 import { getEvents, createEvent, deleteEvent } from '../services/api';
 
 const DEFAULT_EVENTS = [
@@ -845,13 +844,6 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Global Toast Notification */}
-      <Toast
-        show={toast.show}
-        message={toast.msg}
-        type={toast.type}
-        onClose={() => setToast({ show: false, msg: '', type: 'success' })}
-      />
     </div>
   );
 };

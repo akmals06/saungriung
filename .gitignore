@@ -19,9 +19,6 @@ frontend/dist/
 logs/
 *.log
 
-# IDEs & Agent cache
+# IDEs
 .vscode/
 .idea/
-.adal/
-__pycache__/
-*.pyc
