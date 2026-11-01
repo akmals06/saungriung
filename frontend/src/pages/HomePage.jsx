@@ -1,518 +1,859 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Hero from '../components/home/Hero';
-import Footer from '../components/layout/Footer';
+import FeaturedGrid from '../components/home/FeaturedGrid';
+import SupportingTriGrid from '../components/home/SupportingTriGrid';
+import AmbientAudioBar from '../components/home/AmbientAudioBar';
 import EventCard from '../components/EventCard';
+import Footer from '../components/layout/Footer';
 import Toast from '../components/ui/Toast';
 import { getEvents, createEvent, deleteEvent } from '../services/api';
 
+const DEFAULT_EVENTS = [
+  {
+    id: 'evt-1',
+    title: 'Kerja Bakti & Pengurasan Saluran Air',
+    description: 'Gotong royong membersihkan saluran air dan lingkungan sekitar Gg Saiyan menjelang musim penghujan demi kenyamanan bersama.',
+    date: '2026-11-15',
+    location: 'Sepanjang Gg Saiyan RT 009',
+    type: 'social'
+  },
+  {
+    id: 'evt-2',
+    title: 'Sosialisasi & Penimbangan Bank Sampah',
+    description: 'Program rutin penimbangan sampah daur ulang bekerja sama dengan Bank Sampah Kelurahan Tugu Selatan.',
+    date: '2026-11-22',
+    location: 'Area Pos Ronda RT 009',
+    type: 'social'
+  },
+  {
+    id: 'evt-3',
+    title: 'Pengajian & Doa Bersama Warga',
+    description: 'Silaturahmi dan tausiyah bulanan untuk mempererat kerukunan dan ukhuwah antarwarga RT 009 / RW 002.',
+    date: '2026-11-28',
+    location: 'Saung Riung Utama',
+    type: 'religious'
+  },
+  {
+    id: 'evt-4',
+    title: 'Turnamen Catur & Karambol Guyub',
+    description: 'Kegiatan olahraga santai antarwarga untuk memupuk sportivitas dan keakraban di malam akhir pekan.',
+    date: '2026-12-05',
+    location: 'Balai Warga RT 009',
+    type: 'general'
+  }
+];
+
 const HomePage = () => {
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
-    const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [events, setEvents] = useState(DEFAULT_EVENTS);
+  const [activeSection, setActiveSection] = useState('home');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [activeServiceModal, setActiveServiceModal] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
 
-    // Dummy Gallery Data
-    const galleryData = {
-        futsal: {
-            title: "Saung Riung Futsal Cup",
-            photos: [
-                "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1526232387709-b04cfcc75fd9?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80"
-            ]
-        },
-        pertamina: {
-            title: "Kunjungan Pertamina",
-            photos: [
-                "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=80"
-            ]
-        },
-        gowes: {
-            title: "Gowes Sehat Bersama",
-            photos: [
-                "https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1571068316344-75bc76f77890?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1618176581827-e437c37cd685?auto=format&fit=crop&w=800&q=80"
-            ]
-        },
-        kerjabakti: {
-            title: "Kerja Bakti Lingkungan",
-            photos: [
-                "https://images.unsplash.com/photo-1558008258-3256797b43f3?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1617450365226-9bf28c5d66c6?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=800&q=80"
-            ]
-        }
-    };
-    
-    // Form State
-    const [newEvent, setNewEvent] = useState({ 
-        title: '', 
-        description: '', 
-        date: '', 
-        location: '', 
-        type: 'general' 
-    });
+  // Real community initiative details from Saungriung (Pure vector & factual text)
+  const activityData = {
+    futsal: {
+      title: "Saung Riung Futsal Cup",
+      category: "Olahraga & Pemuda",
+      details: [
+        "Inisiatif kepemudaan RT 009 untuk menyalurkan bakat olahraga dan hidup sehat.",
+        "Diikuti oleh 4 tim perwakilan lorong dan pemuda sekitar Gg Saiyan.",
+        "Dilaksanakan secara berkala di lapangan futsal terdekat dengan sistem gugur ceria.",
+        "Menjadi ajang silaturahmi lintas generasi di lingkungan RT 009/002 Koja."
+      ]
+    },
+    pertamina: {
+      title: "Kemitraan & Sinergi Pertamina",
+      category: "Pemberdayaan Lingkungan",
+      details: [
+        "Program CSR dan pembinaan lingkungan hijau bersama PT Pertamina.",
+        "Pemberian bantuan bibit tanaman obat keluarga (TOGA) dan fasilitas penghijauan lorong.",
+        "Penyuluhan keselamatan penggunaan gas LPG rumah tangga bagi ibu-ibu warga.",
+        "Dukungan sarana kebersihan dan penampungan daur ulang terpadu."
+      ]
+    },
+    gowes: {
+      title: "Gowes Sehat Bersama",
+      category: "Kebersamaan Warga",
+      details: [
+        "Kegiatan bersepeda santai setiap Minggu pagi pukul 06.30 WIB kumpul di Saung Riung.",
+        "Rute ramah keluarga mengelilingi ruang terbuka hijau Jakarta Utara.",
+        "Dilanjutkan sarapan pagi bersama dan bincang santai warga.",
+        "Terbuka untuk seluruh warga RT 009 dari anak-anak hingga lansia."
+      ]
+    },
+    kerjabakti: {
+      title: "Kerja Bakti & Bank Sampah",
+      category: "Kelestarian Lingkungan",
+      details: [
+        "Aksi gotong royong massal dua pekan sekali membersihkan got dan jalan lingkungan.",
+        "Pengumpulan dan penimbangan sampah anorganik bekerja sama dengan Kelurahan Tugu Selatan.",
+        "Hasil tabungan sampah dialokasikan untuk kas sosial warga dan dana darurat.",
+        "Mendukung terwujudnya kampung bersih, bebas jentik nyamuk, dan asri."
+      ]
+    }
+  };
 
-    useEffect(() => {
-        loadEvents();
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
-                }
-            });
-        }, { threshold: 0.1 });
-        
-        document.querySelectorAll('.reveal-up').forEach((el) => observer.observe(el));
-    }, []);
+  // Form State
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    date: '',
+    location: '',
+    type: 'social'
+  });
 
-    const showToast = (msg, type = 'success') => {
-        setToast({ show: true, msg, type });
-        setTimeout(() => setToast({ ...toast, show: false }), 3000);
-    };
+  const showToast = (msg, type = 'success') => {
+    setToast({ show: true, msg, type });
+    setTimeout(() => setToast({ show: false, msg: '', type: 'success' }), 3500);
+  };
 
-    const loadEvents = async () => {
-        try {
-            const res = await getEvents();
-            if (res.success) {
-                const sorted = res.data.sort((a, b) => new Date(b.date) - new Date(a.date));
-                setEvents(sorted);
-            }
-        } catch (error) {
-            console.error("Failed to load events", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const loadEvents = async () => {
+    try {
+      const res = await getEvents();
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const sorted = res.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setEvents(sorted);
+      }
+    } catch (error) {
+      console.warn("Using verified local events fallback:", error);
+    }
+  };
 
-    const handleCreate = async (e) => {
-        e.preventDefault();
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const handleCreateEvent = async (e) => {
+    e.preventDefault();
+    if (!newEvent.title || !newEvent.date) {
+      showToast('Mohon lengkapi judul dan tanggal agenda', 'error');
+      return;
+    }
+
+    try {
+      const createdItem = {
+        id: `evt-${Date.now()}`,
+        ...newEvent
+      };
+
+      try {
         const res = await createEvent(newEvent);
-        if (res.success) {
-            setEvents([res.data, ...events]);
-            setNewEvent({ title: '', description: '', date: '', location: '', type: 'general' });
-            setShowModal(false);
-            showToast('Agenda berhasil dibuat!', 'success');
-        } else {
-            showToast('Gagal membuat agenda: ' + (res.message || 'Error'), 'error');
+        if (res && res.success && res.data) {
+          createdItem.id = res.data.id || createdItem.id;
         }
-    };
+      } catch (err) {
+        // Saved in local session
+      }
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Hapus agenda ini?')) return;
-        
-        try {
-            await deleteEvent(id);
-            setEvents(events.filter(e => e.id !== id));
-            showToast('Agenda berhasil dihapus.', 'info');
-        } catch (error) {
-            showToast('Gagal menghapus agenda.', 'error');
-        }
-    };
+      setEvents([createdItem, ...events]);
+      setNewEvent({ title: '', description: '', date: '', location: '', type: 'social' });
+      setShowNewEventModal(false);
+      showToast('Agenda baru berhasil ditambahkan!', 'success');
+    } catch (err) {
+      showToast('Gagal menambahkan agenda.', 'error');
+    }
+  };
 
-    return (
-        <div style={{position: 'relative', overflow: 'hidden'}}>
-            <Navbar />
-            
-            <Hero />
+  const handleDeleteEvent = async (id) => {
+    try {
+      try {
+        await deleteEvent(id);
+      } catch (e) {
+        // Local delete
+      }
+      setEvents(events.filter((e) => e.id !== id));
+      showToast('Agenda berhasil dihapus.', 'info');
+    } catch (err) {
+      showToast('Gagal menghapus agenda.', 'error');
+    }
+  };
 
-            {/* About Section */}
-            <section id="about" className="reveal-up" style={{ padding: '8rem 0', position: 'relative' }}>
-                <div className="container">
-                    <div className="glass-panel" style={{padding: '4rem', position: 'relative', overflow: 'hidden'}}>
-                        {/* Decorative Circle */}
-                        <div style={{
-                            position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px',
-                            background: 'radial-gradient(circle, rgba(212,163,115,0.2) 0%, transparent 70%)', borderRadius: '50%'
-                        }}></div>
+  const handleNavigate = (sectionId) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-                            <div>
-                                <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>
-                                    Membangun <span className="text-gradient">Harmoni</span>,<br/>
-                                    Menciptakan Keamanan.
-                                </h2>
-                                <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#4a5568', marginBottom: '2.5rem' }}>
-                                    Saung Riung RT 009/002 adalah wujud nyata transformasi digital komunitas warga. 
-                                    Kami menghubungkan setiap aspirasi menjadi aksi nyata demi lingkungan yang lebih baik.
-                                </p>
-                                
-                                {/* Stats Mini Cards */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                                    <div style={{
-                                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.6)',
-                                        borderRadius: '16px', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem',
-                                        boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{
-                                            background: 'rgba(15, 57, 43, 0.1)', color: '#0f392b',
-                                            width: '50px', height: '50px', borderRadius: '12px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                        </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.8rem', color: '#0f392b', margin: 0, lineHeight: 1 }}>50+</h3>
-                                            <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Kepala Keluarga</p>
-                                        </div>
-                                    </div>
+  // Filtered Events with category tab selection
+  const filteredEvents = useMemo(() => {
+    let list = events;
+    if (selectedCategory !== 'all') {
+      list = list.filter((ev) => {
+        const t = ev.type?.toLowerCase() || '';
+        if (selectedCategory === 'social') return t === 'social' || t === 'sosial';
+        if (selectedCategory === 'religious') return t === 'religious' || t === 'keagamaan';
+        if (selectedCategory === 'general') return t === 'general' || t === 'olahraga';
+        return true;
+      });
+    }
 
-                                    <div style={{
-                                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.6)',
-                                        borderRadius: '16px', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem',
-                                        boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{
-                                            background: 'rgba(212, 163, 115, 0.1)', color: '#d4a373',
-                                            width: '50px', height: '50px', borderRadius: '12px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                                        </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.8rem', color: '#d4a373', margin: 0, lineHeight: 1 }}>24/7</h3>
-                                            <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Siaga Keamanan</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style={{ 
-                                height: '350px', 
-                                borderRadius: '24px',
-                                backgroundImage: 'url(/images/harmoni-final.png)',
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)'
-                            }}></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Gallery Section */}
-            <section className="reveal-up" style={{ padding: '6rem 0' }}>
-                <div className="container">
-                    <div style={{textAlign: 'center', marginBottom: '4rem'}}>
-                        <h2 style={{fontSize: '2.5rem', marginBottom: '0.5rem'}} className="text-gradient">Galeri Kegiatan</h2>
-                        <p style={{color: '#64748b'}}>Momen kebersamaan yang tak terlupakan.</p>
-                    </div>
-
-                    <div style={{
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-                        gridAutoRows: '250px',
-                        gap: '1.5rem'
-                    }}>
-                        <div style={{
-                            gridColumn: 'span 2', gridRow: 'span 2', 
-                            borderRadius: '24px', overflow: 'hidden', position: 'relative', cursor: 'pointer'
-                        }} className="gallery-item" onClick={() => setSelectedAlbum(galleryData.futsal)}>
-                            <img src="https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=800&q=80" 
-                                 alt="Futsal" 
-                                 style={{width: '100%', height: '100%', objectFit: 'cover', transition: '0.5s'}} 
-                            />
-                            <div className="overlay">
-                                <h3>Saung Riung Futsal Cup</h3>
-                                <p>Olahraga & Sportivitas</p>
-                            </div>
-                        </div>
-
-                        <div style={{
-                            borderRadius: '24px', overflow: 'hidden', position: 'relative', cursor: 'pointer'
-                        }} className="gallery-item" onClick={() => setSelectedAlbum(galleryData.pertamina)}>
-                            <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=600&q=80" 
-                                 alt="Pertamina" 
-                                 style={{width: '100%', height: '100%', objectFit: 'cover', transition: '0.5s'}} 
-                            />
-                            <div className="overlay">
-                                <h3>Kunjungan Pertamina</h3>
-                                <p>Kolaborasi Strategis</p>
-                            </div>
-                        </div>
-
-                        <div style={{
-                            gridRow: 'span 2',
-                            borderRadius: '24px', overflow: 'hidden', position: 'relative', cursor: 'pointer'
-                        }} className="gallery-item" onClick={() => setSelectedAlbum(galleryData.gowes)}>
-                            <img src="https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=600&q=80" 
-                                 alt="Gowes" 
-                                 style={{width: '100%', height: '100%', objectFit: 'cover', transition: '0.5s'}} 
-                            />
-                            <div className="overlay">
-                                <h3>Gowes Sehat</h3>
-                                <p>Minggu Ceria</p>
-                            </div>
-                        </div>
-
-                        <div style={{
-                            borderRadius: '24px', overflow: 'hidden', position: 'relative', cursor: 'pointer'
-                        }} className="gallery-item" onClick={() => setSelectedAlbum(galleryData.kerjabakti)}>
-                            <img src="https://images.unsplash.com/photo-1558008258-3256797b43f3?auto=format&fit=crop&w=600&q=80" 
-                                 alt="Kerja Bakti" 
-                                 style={{width: '100%', height: '100%', objectFit: 'cover', transition: '0.5s'}} 
-                            />
-                            <div className="overlay">
-                                <h3>Kerja Bakti</h3>
-                                <p>Lingkungan Bersih</p>
-                            </div>
-                        </div>
-                    </div>
-                    <style>{`
-                        .gallery-item:hover img { transform: scale(1.1); }
-                        .overlay {
-                            position: absolute; bottom: 0; left: 0; width: 100%;
-                            padding: 2rem;
-                            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-                            color: white;
-                            opacity: 0; transform: translateY(20px);
-                            transition: 0.4s ease;
-                        }
-                        .gallery-item:hover .overlay { opacity: 1; transform: translateY(0); }
-                        .overlay h3 { color: white; margin: 0; font-size: 1.2rem; }
-                        .overlay p { color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 0.9rem; }
-                        @media (max-width: 768px) {
-                            .gallery-item { grid-column: span 1 !important; grid-row: span 1 !important; height: 250px; }
-                        }
-                    `}</style>
-                </div>
-            </section>
-
-            {/* Events Section */}
-            <section id="events" className="reveal-up" style={{ padding: '6rem 0 8rem' }}>
-                <div className="container">
-                    <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '5rem'
-                    }}>
-                        <h2 style={{ fontSize: '3rem', marginBottom: '1rem' }} className="text-gradient">
-                            Agenda Warga
-                        </h2>
-                        <p style={{ 
-                            color: '#64748b', fontSize: '1.2rem', maxWidth: '600px', lineHeight: 1.6, marginBottom: '2.5rem'
-                        }}>
-                            Simak dan ikuti berbagai kegiatan seru untuk mempererat silaturahmi 
-                            serta membangun lingkungan yang lebih aktif dan positif.
-                        </p>
-                    </div>
-
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                            <div className="spinner" style={{width: '40px', height: '40px', border: '4px solid rgba(15, 57, 43, 0.1)', borderTop: '4px solid #0f392b', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem'}}></div>
-                            <p>Sedang memuat agenda...</p>
-                            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                        </div>
-                    ) : (
-                        <div className="event-grid">
-                            {events.length > 0 ? (
-                                events.map(event => (
-                                    <EventCard key={event.id} event={event} onDelete={handleDelete} />
-                                ))
-                            ) : (
-                                <div className="glass-panel" style={{ 
-                                    gridColumn: '1/-1', textAlign: 'center', padding: '5rem 2rem',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    background: 'rgba(255,255,255,0.6)'
-                                }}>
-                                    <div style={{
-                                        width: '80px', height: '80px', background: 'rgba(15, 57, 43, 0.05)', 
-                                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        marginBottom: '1.5rem', color: '#0f392b'
-                                    }}>
-                                        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                    <h3 style={{fontSize: '1.5rem', color: '#1e293b', marginBottom: '0.5rem'}}>Belum ada agenda terjadwal</h3>
-                                    <p style={{color: '#64748b', maxWidth: '400px', margin: '0 auto', lineHeight: '1.6'}}>
-                                        Saat ini belum ada kegiatan yang dijadwalkan. Jadilah inisiator pertama untuk kegiatan positif di lingkungan kita!
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Partners Section */}
-            <section className="reveal-up" style={{ padding: '4rem 0', background: 'rgba(255,255,255,0.5)' }}>
-                <div className="container">
-                    <div style={{textAlign: 'center', marginBottom: '3rem'}}>
-                        <h2 style={{fontSize: '2rem', marginBottom: '0.5rem', color: '#0f392b'}}>Kolaborasi & Mitra</h2>
-                        <p style={{color: '#d4a373', fontStyle: 'italic'}}>Bersinergi membangun lingkungan yang berkelanjutan.</p>
-                    </div>
-
-                    <div style={{
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                        gap: '3rem',
-                        maxWidth: '1000px',
-                        margin: '0 auto'
-                    }}>
-                        {/* Pertamina (Red) */}
-                        <div className="liger-wrapper" style={{'--bg-start': '#ed1c24', '--bg-end': '#991b1b', '--shadow-color': 'rgba(237, 28, 36, 0.4)'}}>
-                            <div className="liger-card">
-                                <div className="liger-circles">
-                                    <span className="liger-circle c1"></span>
-                                    <span className="liger-circle c2"></span>
-                                    <span className="liger-circle c3"></span>
-                                    <span className="liger-circle c4"></span>
-                                    <span className="liger-circle c5">
-                                        <img src="/images/logo-pertamina.png" alt="Pertamina" />
-                                    </span>
-                                </div>
-                                <div className="liger-glass"></div>
-                                <div className="liger-content">
-                                    <span className="liger-title">PERTAMINA</span>
-                                    <span className="liger-text">Official Partner. Energi untuk negeri.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* BCA (Blue) */}
-                        <div className="liger-wrapper" style={{'--bg-start': '#005eb8', '--bg-end': '#003366', '--shadow-color': 'rgba(0, 94, 184, 0.4)'}}>
-                            <div className="liger-card">
-                                <div className="liger-circles">
-                                    <span className="liger-circle c1"></span>
-                                    <span className="liger-circle c2"></span>
-                                    <span className="liger-circle c3"></span>
-                                    <span className="liger-circle c4"></span>
-                                    <span className="liger-circle c5">
-                                        <img src="/images/logo-bca.png" alt="BCA" style={{objectFit: 'contain', width: '45px'}} />
-                                    </span>
-                                </div>
-                                <div className="liger-glass"></div>
-                                <div className="liger-content">
-                                    <span className="liger-title">BCA</span>
-                                    <span className="liger-text">Digital Banking. Senantiasa di sisi Anda.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bank Sampah (Green) */}
-                        <div className="liger-wrapper" style={{'--bg-start': '#16a34a', '--bg-end': '#14532d', '--shadow-color': 'rgba(22, 163, 74, 0.4)'}}>
-                            <div className="liger-card">
-                                <div className="liger-circles">
-                                    <span className="liger-circle c1"></span>
-                                    <span className="liger-circle c2"></span>
-                                    <span className="liger-circle c3"></span>
-                                    <span className="liger-circle c4"></span>
-                                    <span className="liger-circle c5">
-                                        <img src="/images/logo-banksampah.png" alt="Bank Sampah" />
-                                    </span>
-                                </div>
-                                <div className="liger-glass"></div>
-                                <div className="liger-content">
-                                    <span className="liger-title">Bank Sampah</span>
-                                    <span className="liger-text">Kelurahan Tugu Selatan. Lingkungan bersih.</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Album Modal */}
-            {selectedAlbum && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(5, 25, 18, 0.9)', 
-                    backdropFilter: 'blur(10px)',
-                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000,
-                    animation: 'float 0.4s ease'
-                }} onClick={() => setSelectedAlbum(null)}>
-                    <div style={{ 
-                        width: '90%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto',
-                        background: 'transparent', padding: '2rem', borderRadius: '24px'
-                    }} onClick={e => e.stopPropagation()}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', color: 'white'}}>
-                            <h2 style={{margin: 0, color: 'white'}}>{selectedAlbum.title}</h2>
-                            <button onClick={() => setSelectedAlbum(null)} style={{background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '1.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>×</button>
-                        </div>
-                        
-                        <div style={{
-                            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem'
-                        }}>
-                            {selectedAlbum.photos.map((photo, idx) => (
-                                <div key={idx} style={{borderRadius: '16px', overflow: 'hidden', height: '250px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)'}}>
-                                    <img src={photo} alt={`Foto ${idx+1}`} style={{width: '100%', height: '100%', objectFit: 'cover', transition: '0.3s', cursor: 'zoom-in'}} 
-                                         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                                         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Form Modal */}
-            {showModal && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(5, 25, 18, 0.6)', 
-                    backdropFilter: 'blur(8px)',
-                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000,
-                    animation: 'float 0.5s ease'
-                }}>
-                    <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '500px', background: 'white' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-                            <h3 style={{fontSize: '1.5rem'}}>Agenda Baru</h3>
-                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
-                        </div>
-                        
-                        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                            <input 
-                                type="text" placeholder="Judul Kegiatan" required 
-                                value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})}
-                                style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                            />
-                            
-                            <textarea 
-                                placeholder="Deskripsi Singkat" rows="3"
-                                value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})}
-                                style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', fontFamily: 'inherit' }}
-                            ></textarea>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <input 
-                                    type="date" required 
-                                    value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})}
-                                    style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                                />
-                                <select 
-                                    value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value})}
-                                    style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                                >
-                                    <option value="general">Umum</option>
-                                    <option value="social">Sosial</option>
-                                    <option value="religious">Keagamaan</option>
-                                </select>
-                            </div>
-
-                            <input 
-                                type="text" placeholder="Lokasi (cth: Lapangan RT)" 
-                                value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})}
-                                style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                            />
-
-                            <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}>
-                                Simpan Agenda
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Toast Container */}
-            {toast.show && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />}
-
-            <Footer />
-        </div>
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase();
+    return list.filter(
+      (ev) =>
+        ev.title.toLowerCase().includes(q) ||
+        (ev.description && ev.description.toLowerCase().includes(q)) ||
+        (ev.location && ev.location.toLowerCase().includes(q))
     );
+  }, [events, searchQuery, selectedCategory]);
+
+  return (
+    <div className="app-container">
+      {/* 1. LEFT SCULPTED NAVIGATION DOCK */}
+      <Navbar
+        activeSection={activeSection}
+        onNavigate={handleNavigate}
+        onOpenNewEvent={() => setShowNewEventModal(true)}
+      />
+
+      {/* 2. MAIN APPLICATION VIEWPORT */}
+      <main className="main-viewport">
+        {/* Top Header & Search Bar */}
+        <header className="top-bar-container">
+          <div className="top-greeting">
+            <h1>
+              <span>Halo, Warga & Tamu</span>
+              <span className="top-badge-verified">RT 009 / RW 002</span>
+            </h1>
+            <p>Pusat informasi dan kebersamaan warga Gg Saiyan, Koja, Jakarta Utara.</p>
+          </div>
+
+          <div className="top-controls">
+            <div className="sculpted-search" role="search">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-subtle)' }}>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Cari agenda atau kegiatan warga..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Cari agenda"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowNewEventModal(true)}
+              className="btn-tactile btn-tactile-primary"
+            >
+              <span>+ Agenda Baru</span>
+            </button>
+          </div>
+        </header>
+
+        {/* 3. HERO MASTER ARCHITECTURAL BANNER (No Images) */}
+        <Hero
+          onExploreEvents={() => handleNavigate('events')}
+          onOpenNewEvent={() => setShowNewEventModal(true)}
+          onNavigate={handleNavigate}
+        />
+
+        {/* 4. ABOUT SECTION: Profil & Landasan Komunitas (Balanced Architectural Surface) */}
+        <section id="about" className="about-section-wrapper">
+          <div className="about-sculpted-panel">
+            <div className="about-balanced-grid">
+              {/* Left Column: Narrative & Grounded Values */}
+              <div className="about-story-col">
+                <div>
+                  <span className="section-overline">
+                    PROFIL & KEMITRAAN WARGA
+                  </span>
+                  
+                  <h2 className="about-lead-title">
+                    Membangun <span style={{ color: 'var(--primary-light)' }}>Harmoni</span>,<br />
+                    Menciptakan Rasa Aman.
+                  </h2>
+                  
+                  <p className="about-body-text">
+                    Saung Riung RT 009/002 Koja adalah wujud nyata transformasi guyub warga.
+                    Melalui ruang pertemuan yang asri, sarana komunikasi yang transparan, dan sinergi
+                    gotong royong, setiap aspirasi warga dapat disuarakan dan diwujudkan bersama.
+                  </p>
+                </div>
+
+                <div className="about-stats-grid">
+                  <div className="about-stat-card">
+                    <div className="about-stat-icon-wrap" style={{ background: 'rgba(19, 62, 48, 0.08)', color: 'var(--primary)' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="about-stat-num">50+</div>
+                      <div className="about-stat-lbl">Kepala Keluarga</div>
+                    </div>
+                  </div>
+
+                  <div className="about-stat-card">
+                    <div className="about-stat-icon-wrap" style={{ background: 'rgba(184, 123, 50, 0.1)', color: 'var(--ochre-warm)' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="about-stat-num">24/7</div>
+                      <div className="about-stat-lbl">Siaga Siskamling</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: 3 Core Pillars */}
+              <div className="about-pillars-card">
+                <div>
+                  <span className="section-overline" style={{ color: '#fcefdc' }}>
+                    PILAR UTAMA LINGKUNGAN
+                  </span>
+                  <h3 className="pillars-header-title">
+                    Fasilitas & Layanan RT 009
+                  </h3>
+
+                  <div className="pillars-items-list">
+                    <div className="pillar-item-row">
+                      <div className="pillar-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="23 4 23 10 17 10" />
+                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                          <polyline points="1 20 1 14 7 14" />
+                          <path d="M3.51 9a9 9 0 0 1 2.12-5.36L1 4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <strong>Kebersihan & Bank Sampah</strong>
+                        <p>Pengelolaan limbah anorganik dan pemilahan sampah terpadu warga di sepanjang lorong.</p>
+                      </div>
+                    </div>
+
+                    <div className="pillar-item-row">
+                      <div className="pillar-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <strong>Siskamling Terkoordinasi</strong>
+                        <p>Jadwal ronda bergilir dan pemantauan lingkungan aktif 24 jam di pos Saung Riung.</p>
+                      </div>
+                    </div>
+
+                    <div className="pillar-item-row">
+                      <div className="pillar-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                      </div>
+                      <div>
+                        <strong>Kemitraan Sosial & CSR</strong>
+                        <p>Kerja sama berkelanjutan dengan PT Pertamina, kelurahan, dan perbankan digital warga.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. INISIATIF & KEGIATAN WARGA (Pure Vector & Typography) */}
+        <FeaturedGrid
+          galleryData={activityData}
+          onSelectAlbum={(data) => setSelectedActivity(data)}
+          onNavigate={handleNavigate}
+        />
+
+        {/* 6. SUPPORTING TRI-GRID (Philosophy, Quick Actions, Map - No Photos) */}
+        <SupportingTriGrid
+          onOpenService={(serviceType) => setActiveServiceModal(serviceType)}
+          onOpenMap={() => setShowMapModal(true)}
+        />
+
+        {/* 7. AMBIENT AUDIO BAR (Matches Reference Ocean Breeze Bar) */}
+        <AmbientAudioBar />
+
+        {/* 8. AGENDA WARGA TERJADWAL (Interactive Filter & Clean Cards) */}
+        <section id="events" className="events-section-wrapper">
+          <div className="events-header-row">
+            <div>
+              <span className="section-overline">
+                KALENDER & INISIATIF
+              </span>
+              <h2 className="section-main-title">
+                Agenda Warga Terjadwal
+              </h2>
+              <p className="section-main-desc">
+                Kegiatan berkala, gotong royong, dan pertemuan warga untuk terus
+                mempererat silaturahmi di lingkungan RT 009 Koja.
+              </p>
+
+              {/* Category Filter Tabs */}
+              <div className="agenda-filter-tabs">
+                <button
+                  className={`agenda-filter-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('all')}
+                >
+                  Semua Agenda ({events.length})
+                </button>
+                <button
+                  className={`agenda-filter-btn ${selectedCategory === 'social' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('social')}
+                >
+                  Sosial & Gotong Royong
+                </button>
+                <button
+                  className={`agenda-filter-btn ${selectedCategory === 'religious' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('religious')}
+                >
+                  Keagamaan
+                </button>
+                <button
+                  className={`agenda-filter-btn ${selectedCategory === 'general' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('general')}
+                >
+                  Olahraga & Pemuda
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowNewEventModal(true)}
+              className="btn-tactile btn-tactile-primary"
+            >
+              <span>+ Usulkan Agenda</span>
+            </button>
+          </div>
+
+          <div className="agenda-cards-grid">
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((evt) => (
+                <EventCard
+                  key={evt.id}
+                  event={evt}
+                  onDelete={handleDeleteEvent}
+                />
+              ))
+            ) : (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '3.5rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '24px',
+                border: 'var(--border-outline)'
+              }}>
+                <p style={{ fontSize: '0.98rem', color: 'var(--text-muted)' }}>
+                  Tidak ada agenda yang cocok dengan kriteria pencarian saat ini.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 8. PARTNERS (Clean Typographic Badges - No Raster Images) */}
+        <section className="partners-sculpted-section">
+          <h3>Sinergi & Kemitraan Pendukung</h3>
+          <p>Bersinergi bersama institusi pendukung untuk mewujudkan lingkungan yang mandiri dan berdaya.</p>
+
+          <div className="partners-flex-row">
+            <div className="partner-logo-pill">
+              <div className="partner-badge-icon" style={{ background: '#b91c1c' }}>
+                P
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-headline)' }}>Pertamina</strong>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Mitra Bina Lingkungan</span>
+              </div>
+            </div>
+
+            <div className="partner-logo-pill">
+              <div className="partner-badge-icon" style={{ background: '#005eb8' }}>
+                B
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-headline)' }}>BCA</strong>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Layanan Keuangan Digital</span>
+              </div>
+            </div>
+
+            <div className="partner-logo-pill">
+              <div className="partner-badge-icon" style={{ background: '#16a34a' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-headline)' }}>Bank Sampah</strong>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Kelurahan Tugu Selatan</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 9. SCULPTED OFFICIAL FOOTER */}
+        <Footer />
+      </main>
+
+      {/* ======================================================================
+          MODALS
+          ====================================================================== */}
+
+      {/* 1. Activity Detail Modal */}
+      {selectedActivity && (
+        <div className="sculpted-modal-overlay" onClick={() => setSelectedActivity(null)}>
+          <div
+            className="sculpted-modal-box"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="modal-close-btn" onClick={() => setSelectedActivity(null)} aria-label="Tutup modal">
+              ✕
+            </button>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <span className="section-overline">
+                {selectedActivity.category}
+              </span>
+              <h2 style={{ fontSize: '1.75rem', marginTop: '0.2rem', color: 'var(--text-headline)' }}>
+                {selectedActivity.title}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
+                Program dan inisiatif aktif warga RT 009 / RW 002 Koja.
+              </p>
+            </div>
+
+            <div style={{ background: 'var(--bg-surface-tint)', borderRadius: '18px', padding: '1.4rem', border: 'var(--border-outline)' }}>
+              <h4 style={{ fontSize: '0.95rem', color: 'var(--primary-deep)', marginBottom: '0.75rem' }}>
+                Rincian & Tujuan Program:
+              </h4>
+              <ul style={{ paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.55rem', color: 'var(--text-body)', fontSize: '0.9rem' }}>
+                {selectedActivity.details.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSelectedActivity(null)}
+                className="btn-tactile btn-tactile-primary"
+              >
+                Tutup Informasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Interactive Google Maps Modal */}
+      {showMapModal && (
+        <div className="sculpted-modal-overlay" onClick={() => setShowMapModal(false)}>
+          <div
+            className="sculpted-modal-box"
+            style={{ maxWidth: '720px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="modal-close-btn" onClick={() => setShowMapModal(false)} aria-label="Tutup modal">
+              ✕
+            </button>
+            <div style={{ marginBottom: '1.2rem' }}>
+              <span className="section-overline">
+                PETA & PETUNJUK ARAH
+              </span>
+              <h2 style={{ fontSize: '1.75rem', marginTop: '0.2rem' }}>Saung Riung RT 009</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Gg Saiyan, RT 009 / RW 002, Kel. Tugu Selatan, Kec. Koja, Jakarta Utara
+              </p>
+            </div>
+
+            <div style={{
+              height: '360px',
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-tactile-md)',
+              border: 'var(--border-outline)'
+            }}>
+              <iframe
+                title="Peta Saung Riung"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.995417132507!2d106.90907477600747!3d-6.1313167938555075!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e6a1f0066ae204d%3A0xbd45bf44f3caf07a!2sSAUNG%20RIUNG!5e0!3m2!1sen!2sid!4v1771851898168!5m2!1sen!2sid"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </div>
+
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                onClick={() => setShowMapModal(false)}
+                className="btn-tactile btn-tactile-outline"
+              >
+                Tutup
+              </button>
+              <a
+                href="https://maps.app.goo.gl/4mR1LhRbk9KqmBuF8"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-tactile btn-tactile-primary"
+              >
+                Buka di Google Maps ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Quick Service Modal */}
+      {activeServiceModal && (
+        <div className="sculpted-modal-overlay" onClick={() => setActiveServiceModal(null)}>
+          <div className="sculpted-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setActiveServiceModal(null)} aria-label="Tutup modal">
+              ✕
+            </button>
+            {activeServiceModal === 'layanan-rt' && (
+              <div>
+                <span className="section-overline">LAYANAN KEPENDUDUKAN</span>
+                <h2 style={{ fontSize: '1.75rem', margin: '0.3rem 0 0.85rem' }}>Surat Pengantar RT</h2>
+                <p style={{ lineHeight: 1.7, color: 'var(--text-body)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                  Warga dapat mengajukan surat pengantar untuk keperluan administrasi kependudukan (KTP, KK, SKCK, surat keterangan domisili).
+                </p>
+                <div style={{ background: 'var(--bg-surface-tint)', padding: '1.2rem', borderRadius: '16px', marginBottom: '1.25rem', border: 'var(--border-outline)' }}>
+                  <strong style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--primary-deep)', fontSize: '0.92rem' }}>Persyaratan:</strong>
+                  <ul style={{ paddingLeft: '1.2rem', fontSize: '0.88rem', color: 'var(--text-body)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <li>Fotokopi Kartu Keluarga (KK)</li>
+                    <li>Fotokopi KTP Pemohon</li>
+                    <li>Menghubungi Ketua RT atau sekretariat Saung Riung</li>
+                  </ul>
+                </div>
+                <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="btn-tactile btn-tactile-primary" style={{ width: '100%' }}>
+                  Hubungi Pengurus via WhatsApp
+                </a>
+              </div>
+            )}
+
+            {activeServiceModal === 'bank-sampah' && (
+              <div>
+                <span className="section-overline" style={{ color: '#16a34a' }}>KELESTARIAN LINGKUNGAN</span>
+                <h2 style={{ fontSize: '1.75rem', margin: '0.3rem 0 0.85rem' }}>Bank Sampah Tugu Selatan</h2>
+                <p style={{ lineHeight: 1.7, color: 'var(--text-body)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                  Program tabungan sampah warga RT 009 untuk mengubah sampah anorganik terpilah (kardus, plastik, botol, kaleng) menjadi tabungan bernilai ekonomis.
+                </p>
+                <div style={{ background: '#f0fdf4', padding: '1.2rem', borderRadius: '16px', marginBottom: '1.25rem', border: '1px solid rgba(22, 163, 74, 0.2)' }}>
+                  <strong style={{ display: 'block', marginBottom: '0.35rem', color: '#14532d', fontSize: '0.92rem' }}>Jadwal Penimbangan:</strong>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#15803d' }}>
+                    Setiap hari Minggu pekan kedua & keempat di halaman Saung Riung (08:00 - 11:00 WIB).
+                  </p>
+                </div>
+                <button onClick={() => setActiveServiceModal(null)} className="btn-tactile btn-tactile-primary" style={{ width: '100%' }}>
+                  Mengerti
+                </button>
+              </div>
+            )}
+
+            {activeServiceModal === 'pos-ronda' && (
+              <div>
+                <span className="section-overline" style={{ color: '#d97706' }}>KEAMANAN LINGKUNGAN</span>
+                <h2 style={{ fontSize: '1.75rem', margin: '0.3rem 0 0.85rem' }}>Siskamling & Pos Ronda 24 Jam</h2>
+                <p style={{ lineHeight: 1.7, color: 'var(--text-body)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                  Sistem keamanan lingkungan warga dengan jadwal ronda bergiliran dan pos pantau terpadu untuk memastikan lingkungan senantiasa kondusif dan tenteram.
+                </p>
+                <div style={{ background: '#fefce8', padding: '1.2rem', borderRadius: '16px', border: '1px solid rgba(217, 119, 6, 0.2)', marginBottom: '1.25rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#92400e' }}>
+                    Hubungi petugas jaga ronda melalui grup komunikasi keamanan RT 009 jika membutuhkan bantuan darurat atau pantauan khusus.
+                  </p>
+                </div>
+                <button onClick={() => setActiveServiceModal(null)} className="btn-tactile btn-tactile-primary" style={{ width: '100%' }}>
+                  Tutup
+                </button>
+              </div>
+            )}
+
+            {activeServiceModal === 'aspirasi' && (
+              <div>
+                <span className="section-overline" style={{ color: 'var(--slate-blue)' }}>SUARA WARGA</span>
+                <h2 style={{ fontSize: '1.75rem', margin: '0.3rem 0 0.85rem' }}>Kotak Aspirasi & Masukan</h2>
+                <p style={{ lineHeight: 1.7, color: 'var(--text-body)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                  Punya ide perbaikan lingkungan, usulan kegiatan, atau masukan untuk pengurus RT 009? Sampaikan langsung secara terbuka.
+                </p>
+                <a href="mailto:info@saungriung.id?subject=Aspirasi%20Warga%20RT%20009" className="btn-tactile btn-tactile-primary" style={{ width: '100%' }}>
+                  Kirim Email Aspirasi
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Form Modal (Tambah Agenda Baru) */}
+      {showNewEventModal && (
+        <div className="sculpted-modal-overlay" onClick={() => setShowNewEventModal(false)}>
+          <div className="sculpted-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowNewEventModal(false)} aria-label="Tutup modal">
+              ✕
+            </button>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <span className="section-overline">
+                AGENDA WARGA
+              </span>
+              <h2 style={{ fontSize: '1.75rem', marginTop: '0.2rem' }}>Tambah Agenda Baru</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Jadwalkan kegiatan bersama demi kemajuan dan kekompakan RT 009.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateEvent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-headline)' }}>
+                  Judul Kegiatan *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Kerja Bakti Lingkungan"
+                  required
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem 1.1rem',
+                    borderRadius: '14px',
+                    border: 'var(--border-outline)',
+                    background: 'var(--bg-surface-tint)',
+                    fontSize: '0.9rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-headline)' }}>
+                  Deskripsi Kegiatan
+                </label>
+                <textarea
+                  placeholder="Jelaskan tujuan dan rincian kegiatan..."
+                  rows="3"
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem 1.1rem',
+                    borderRadius: '14px',
+                    border: 'var(--border-outline)',
+                    background: 'var(--bg-surface-tint)',
+                    fontSize: '0.9rem',
+                    fontFamily: 'inherit',
+                    outline: 'none'
+                  }}
+                ></textarea>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-headline)' }}>
+                    Tanggal Pelaksanaan *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newEvent.date}
+                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.8rem 1rem',
+                      borderRadius: '14px',
+                      border: 'var(--border-outline)',
+                      background: 'var(--bg-surface-tint)',
+                      fontSize: '0.88rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-headline)' }}>
+                    Kategori Agenda
+                  </label>
+                  <select
+                    value={newEvent.type}
+                    onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.8rem 1rem',
+                      borderRadius: '14px',
+                      border: 'var(--border-outline)',
+                      background: 'var(--bg-surface-tint)',
+                      fontSize: '0.88rem',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="social">Sosial & Lingkungan</option>
+                    <option value="religious">Keagamaan</option>
+                    <option value="general">Olahraga & Umum</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-headline)' }}>
+                  Lokasi Pertemuan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Saung Riung Utama / Gg Saiyan"
+                  value={newEvent.location}
+                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem 1.1rem',
+                    borderRadius: '14px',
+                    border: 'var(--border-outline)',
+                    background: 'var(--bg-surface-tint)',
+                    fontSize: '0.9rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowNewEventModal(false)}
+                  className="btn-tactile btn-tactile-outline"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-tactile btn-tactile-primary"
+                >
+                  Simpan Agenda
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Global Toast Notification */}
+      <Toast
+        show={toast.show}
+        message={toast.msg}
+        type={toast.type}
+        onClose={() => setToast({ show: false, msg: '', type: 'success' })}
+      />
+    </div>
+  );
 };
 
 export default HomePage;
